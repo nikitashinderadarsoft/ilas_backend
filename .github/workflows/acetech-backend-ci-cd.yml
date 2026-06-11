@@ -1,0 +1,78 @@
+name: AceTech Backend CI/CD
+
+on:
+  push:
+    branches:
+      - PRE-PROD
+  workflow_dispatch:
+
+jobs:
+  deploy-backend:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1️⃣ Checkout code
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2️⃣ Create .env dynamically
+      - name: Create .env
+        run: |
+          echo "PORT=${{ secrets.PORT }}" > .env
+          echo "MONGODB_URI=${{ secrets.MONGODB_URI }}" >> .env
+          echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> .env
+          echo "JWT_EXPIRES_IN=${{ secrets.JWT_EXPIRES_IN }}" >> .env
+          echo "NODE_ENV=${{ secrets.NODE_ENV }}" >> .env
+          echo "IPINFO_TOKEN=${{ secrets.IPINFO_TOKEN }}" >> .env
+          echo "FRONTEND_URL_CORS=${{ secrets.FRONTEND_URL_CORS }}" >> .env
+          echo "MOBILE_APP_SECRET=${{ secrets.MOBILE_APP_SECRET }}" >> .env
+          echo "AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}" >> .env
+          echo "AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}" >> .env
+          echo "AWS_REGION=${{ secrets.AWS_REGION }}" >> .env
+          echo "AWS_S3_BUCKET=${{ secrets.AWS_S3_BUCKET }}" >> .env
+          echo "MAX_FILE_SIZE=${{ secrets.MAX_FILE_SIZE }}" >> .env
+          echo "PRIVATE_CRYPTO_KEY=${{ secrets.PRIVATE_CRYPTO_KEY }}" >> .env
+          echo "RAZORPAY_KEY_ID=${{ secrets.RAZORPAY_KEY_ID }}" >> .env
+          echo "RAZORPAY_KEY_SECRET=${{ secrets.RAZORPAY_KEY_SECRET }}" >> .env
+          echo "BASE_URL=${{ secrets.BASE_URL }}" >> .env
+          echo "FRONTEND_BASE_URL=${{ secrets.FRONTEND_BASE_URL }}" >> .env
+          echo "BCRYPT_ROUNDS=${{ secrets.BCRYPT_ROUNDS }}" >> .env
+          echo "WEBHOOK_SECRET=${{ secrets.WEBHOOK_SECRET }}" >> .env
+
+      # 3️⃣ Copy project to server via SCP
+      - name: Deploy backend to server
+        uses: appleboy/scp-action@v0.1.6
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          source: "."
+          target: "/www/wwwroot/acetech.api.radarsofttech.in/"
+          rm: false
+          overwrite: true
+
+      # 4️⃣ SSH into server, load Node/PM2 PATH, install dependencies, start/restart backend
+      - name: Start/restart backend with PM2
+        uses: appleboy/ssh-action@v0.1.6
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            cd /www/wwwroot/acetech.api.radarsofttech.in/
+
+            # Add Node and PM2 to PATH to avoid "/usr/bin/env node: No such file or directory"
+            export PATH=/www/server/nvm/versions/node/v22.17.0/bin:$PATH
+
+            # Install dependencies
+            npm ci
+
+            # Zero-downtime reload: reload if running, otherwise start
+            if pm2 list | grep -q "acetech-backend"; then
+              pm2 reload acetech-backend
+            else
+              pm2 start npm --name "acetech-backend" -- start
+            fi
+
+            # Save PM2 process list for auto-start
+            pm2 save
