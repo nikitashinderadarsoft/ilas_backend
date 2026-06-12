@@ -19,6 +19,11 @@ const visitorSchema = new mongoose.Schema(
     city: { type: String, required: true, default: null },
     visiting_dates: { type: String, required: true },
 
+    pass_selection: {
+      type: String,
+      default: null,
+    },
+
     category: {
       type: String,
       required: true,

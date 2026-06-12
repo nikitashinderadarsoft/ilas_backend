@@ -160,6 +160,7 @@ const createOrder = async (req, res) => {
       category,
       subcategory,
       usd_price,
+      pass_selection,
     } = req.body;
 
     // ================= CLOSED DAY VALIDATION =================
@@ -304,6 +305,7 @@ const createOrder = async (req, res) => {
           category,
           subcategory,
           usd_price,
+          pass_selection,
           category_price: payableAmount,
         },
         { new: true }
@@ -337,6 +339,7 @@ const createOrder = async (req, res) => {
       category,
       subcategory,
       usd_price,
+      pass_selection,
       category_price: payableAmount,
     });
   }

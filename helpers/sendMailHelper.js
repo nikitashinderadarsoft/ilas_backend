@@ -48,6 +48,7 @@ const sendMailCallApi = async ({
       },
       domain: "gathrr.in",
       template_id: templateId,
+      validate_before_send: true,
     };
 
     const variables = data.recipients?.[0]?.variables || {};

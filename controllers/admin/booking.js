@@ -39,7 +39,7 @@ const getRazorpayErrorMessage = (error, fallback = "Failed to refresh payment st
 
 const getGeneralVisitorData = async (req, res, next) => {
   try {
-    const { exhibitor_id, status } = req.body;
+    const { exhibitor_id, status, pass_selection, category, subcategory,} = req.body;
 
     const baseMatch = {};
 
@@ -51,6 +51,17 @@ const getGeneralVisitorData = async (req, res, next) => {
       baseMatch.exhibitor_id = mongoose.Types.ObjectId(exhibitor_id);
     }
 
+    if (pass_selection) {
+      baseMatch.pass_selection = pass_selection;
+    }
+
+    if (category) {
+      baseMatch.category = category;
+    }
+
+    if (subcategory) {
+      baseMatch.subcategory = subcategory;
+    }
     const response = await applyQueryOptions({
       model: Visitor,
       req,
