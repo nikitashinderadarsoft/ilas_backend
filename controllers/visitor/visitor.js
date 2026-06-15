@@ -158,8 +158,8 @@ const createOrder = async (req, res) => {
       total_amount,
       coupon_code,
       category,
-      subcategory,
-      usd_price,
+      // subcategory,
+      // usd_price,
       pass_selection,
     } = req.body;
 
@@ -232,10 +232,6 @@ const createOrder = async (req, res) => {
         $or: [{ email }, { phone }],
       });
 
-
-  
-
-
     // ================= CREATE ORDER =================
     const bookingNo = "ILAS-" + Date.now();
 
@@ -303,8 +299,8 @@ const createOrder = async (req, res) => {
           order_id: order.id,
           payment_status: "PENDING",
           category,
-          subcategory,
-          usd_price,
+          // subcategory,
+          // usd_price,
           pass_selection,
           category_price: payableAmount,
         },
@@ -337,8 +333,8 @@ const createOrder = async (req, res) => {
       order_id: order.id,
       payment_status: "PENDING",
       category,
-      subcategory,
-      usd_price,
+      // subcategory,
+      // usd_price,
       pass_selection,
       category_price: payableAmount,
     });
@@ -501,7 +497,7 @@ const verifyPayment = async (req, res) => {
 
     const finalStatus = statusMap[payment.status] || "UNKNOWN";
 
-    const booking = await Visitor.findOneAndUpdate(
+    let booking = await Visitor.findOneAndUpdate(
       { order_id },
       {
         payment_id,
@@ -509,6 +505,17 @@ const verifyPayment = async (req, res) => {
       },
       { new: true },
     );
+
+    if (!booking) {
+    booking = await AssociationVisitor.findOneAndUpdate(
+        { order_id },
+        {
+          payment_id,
+          payment_status: finalStatus,
+        },
+        { new: true }
+      );
+    }
 
     if (!booking) {
       return res.status(404).json({
@@ -519,9 +526,17 @@ const verifyPayment = async (req, res) => {
 
     // Send msg ONLY if success
     if (finalStatus === "SUCCESS") {
-      const data = await Visitor.findOne({ order_id: order_id }).select(
+      let data = await Visitor.findOne({ order_id: order_id }).select(
         "booking_no visitor_pdf_url phone full_name email country_code visiting_dates",
       );
+
+      if (!data) {
+        data = await AssociationVisitor.findOne({
+          order_id,
+        }).select(
+          "booking_no association_visitor_pdf_url phone full_name email country_code visiting_dates"
+        );
+      }
 
       
 
@@ -541,7 +556,9 @@ const verifyPayment = async (req, res) => {
       const toNumber = `${cleanCountryCode}${cleanPhone}`;
 
       // Build file URL safely
-      const fileUrl = data.visitor_pdf_url;
+      const fileUrl =
+          data.visitor_pdf_url ||
+          data.association_visitor_pdf_url;
 
       //  WhatsApp API
       callApi({
@@ -557,11 +574,15 @@ const verifyPayment = async (req, res) => {
         console.log("visitor_dates missing:", data);
       }
 
+      const pdfLink =
+        data.visitor_pdf_url ||
+        data.association_visitor_pdf_url;
+
       // Email API
       sendMailCallApi({
         email: data.email,
         name: data.full_name,
-        pdf_link: data.visitor_pdf_url,
+        pdf_link: pdfLink,
         // orderid: data.booking_no,
         // datebooking: formatted,
         // qr_link: generateBadgeUrl(booking._id),
@@ -671,7 +692,7 @@ const webhookPayment = async (req, res) => {
     const finalStatus = statusMap[payment.status] || "UNKNOWN";
 
     // ================= ATOMIC UPDATE (IDEMPOTENT) =================
-    const updated = await Visitor.findOneAndUpdate(
+    let updated = await Visitor.findOneAndUpdate(
       {
         order_id: payment.order_id,
         payment_status: { $ne: "SUCCESS" }, // prevent duplicate success processing
@@ -683,6 +704,21 @@ const webhookPayment = async (req, res) => {
       },
       { new: true },
     );
+
+    if(!updated) {
+      updated = await AssociationVisitor.findOneAndUpdate(
+      {
+        order_id: payment.order_id,
+        payment_status: { $ne: "SUCCESS" }, // prevent duplicate success processing
+      },
+      {
+        payment_id: payment.id,
+        payment_status: finalStatus,
+        webhookUpdatedAt: new Date(),
+      },
+      { new: true },
+    );
+    }
 
     if (!updated) {
       await RazorpayWebhookLog.findByIdAndUpdate(webhookLog._id, {
@@ -725,9 +761,21 @@ const webhookPayment = async (req, res) => {
       }
 
       try {
-        const data = await Visitor.findOne({
+        let data = await Visitor.findOne({
           order_id: payment.order_id,
         }).select("booking_no visitor_pdf_url phone full_name email country_code visiting_dates country state city total_amount");
+
+        let visitorType = "GENERAL VISITOR";
+
+        if (!data) {
+          data = await AssociationVisitor.findOne({
+            order_id: payment.order_id,
+          }).select("booking_no association_visitor_pdf_url phone full_name email country_code visiting_dates country state city total_amount");
+
+           if (data) {
+              visitorType = "ASSOCIATION VISITOR";
+            }
+        }
 
         if (data) {
           const cleanCountryCode = (data.country_code || "").replace(/\D/g, "");
@@ -735,7 +783,9 @@ const webhookPayment = async (req, res) => {
 
           const toNumber = `${cleanCountryCode}${cleanPhone}`;
 
-          const fileUrl = data.visitor_pdf_url;
+          const fileUrl =
+            data.visitor_pdf_url ||
+            data.association_visitor_pdf_url;
 
           sendDataToDashboard({
             uid: data._id.toString(),
@@ -752,7 +802,7 @@ const webhookPayment = async (req, res) => {
             additionalData: {
               amount_paid: data.total_amount.toString(),
               ticket_name: data.visiting_dates.split(",").length > 2 ? "All Three Days" : buildBadgeValidityText(data.visiting_dates, true).trim(),
-              type: "GENERAL VISITOR",
+              type: visitorType,
             },
             label: "PAID",
             badgeUrl: fileUrl,
@@ -775,11 +825,15 @@ const webhookPayment = async (req, res) => {
             console.log("visitor_dates missing:", data);
           }
 
+          const pdfLink =
+              data.visitor_pdf_url ||
+              data.association_visitor_pdf_url;
+
           // Email API
           sendMailCallApi({
             email: data.email,
             name: data.full_name,
-            pdf_link: data.visitor_pdf_url,
+            pdf_link: pdfLink,
             // orderid: data.booking_no,
             // datebooking: formatted,
             // qr_link: generateBadgeUrl(data._id),

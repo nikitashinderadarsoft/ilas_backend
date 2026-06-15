@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const dotenv = require("dotenv");
+const { GetBucketLoggingCommand } = require("@aws-sdk/client-s3");
 
 dotenv.config();
 
@@ -29,20 +30,20 @@ const visitorSchema = new mongoose.Schema(
       required: true,
     },
 
-    subcategory: {
-      type: String,
-      default: null,
-    },
+    // subcategory: {
+    //   type: String,
+    //   default: null,
+    // },
 
     category_price: {
       type: Number,
       default: 0,
     },
 
-    usd_price: {
-      type: Number,
-      default: 0,
-    },
+    // usd_price: {
+    //   type: Number,
+    //   default: 0,
+    // },
     // visitor_profile: { type: String, required: true, default: null },
     // interest_areas: { type: Array, required: true, default: null },
     subtotal_amount: { type: Number, required: true, default: 0 },

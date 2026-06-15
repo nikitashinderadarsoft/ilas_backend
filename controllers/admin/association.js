@@ -1,5 +1,7 @@
 const AssociationModel = require("../../models/Association");
-const AssociationVisitorModel = require("../../models/AssociationVisitor");
+//const AssociationVisitorModel = require("../../models/AssociationVisitor");
+const AssociationVisitor = require("../../models/AssociationVisitor");
+const { applyQueryOptions } = require("../../helpers/query");
 
 const addAssociation = async (req, res, next) => {
   try {
@@ -130,6 +132,52 @@ const getAssociationVisitors = async (req, res, next) => {
   }
 };
 
+
+//new function
+const getAssociationVisitorData = async (req, res) => {
+  try {
+    const { status, category, event_type } = req.body;
+
+    const baseMatch = {};
+
+    if (status) {
+      baseMatch.payment_status = status;
+    }
+
+    if (category) {
+      baseMatch.category = category;
+    }
+
+    if (event_type) {
+      baseMatch.event_type = event_type;
+    }
+
+    const response = await applyQueryOptions({
+      model: AssociationVisitor,
+      req,
+      searchFields: [
+        "full_name",
+        "email",
+        "phone",
+        "company_name",
+      ],
+      baseMatch,
+    });
+
+    return res.status(200).json({
+      ...response,
+      message: "Association visitors fetched successfully.",
+    });
+  } catch (err) {
+    console.error("Association Visitor Error:", err);
+
+    return res.status(500).json({
+      status: false,
+      message: err.message,
+    });
+  }
+};
+
 module.exports = {
   addAssociation,
   getAllAssociations,
@@ -137,4 +185,5 @@ module.exports = {
   updateAssociation,
   deleteAssociation,
   getAssociationVisitors,
+  getAssociationVisitorData
 };

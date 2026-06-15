@@ -8,13 +8,20 @@ const {
   getAssociationById,
   updateAssociation,
   deleteAssociation,
-  getAssociationVisitors
+  getAssociationVisitors,
+  getAssociationVisitorData
 } = require("../../controllers/admin/association");
 
 // Public GET routes 
 router.get("/", getAllAssociations);
 router.get("/visitors/:id", getAssociationVisitors);
 router.get("/:id", getAssociationById);
+
+router.post(
+  "/association-visitor-list",
+  authenticate,
+  getAssociationVisitorData
+);
 
 
 // Protected routes
