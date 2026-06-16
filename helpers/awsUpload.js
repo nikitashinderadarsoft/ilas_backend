@@ -35,7 +35,7 @@ const upload = multer({
 const uploadToS3 = async ({
   file,
   context = "DEFAULT",
-  prefix = "acetech",
+  prefix = "ilas",
   createFileRecord = true,
   ownerId,
   uploadedBy,
@@ -111,7 +111,7 @@ const uploadBufferToS3 = async ({
   originalname,
   mimetype,
   context = "DEFAULT",
-  prefix = "acetech",
+  prefix = "ilas",
   createFileRecord = true,
   ownerId,
   uploadedBy,

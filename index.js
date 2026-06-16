@@ -43,13 +43,13 @@ app.use("/api/visitor", require("./routes/visitor"));
 app.use("/ping", (req, res) =>
   res.json({
     status: true,
-    message: "AceTech Backend",
+    message: "ILAS Backend",
     time: new Date().toISOString(),
     environment: process.env.NODE_ENV,
   }),
 );
 
-app.get("/", (req, res) => res.json({ status: true, message: "AceTech Backend" }));
+app.get("/", (req, res) => res.json({ status: true, message: "ILAS Backend" }));
 
 app.use((req, res, next) => {
   next({ status: false, message: "Route not found" });
