@@ -9,6 +9,9 @@ const {
   resendGeneralVisitorPass,
   resendBusinessVisitorPass,
   getAllExhibitorInvitees,
+  refreshAssociationVisitorPayment,
+  resendAssociationVisitorPass,
+
 } = require("../../controllers/admin/booking");
 const router = require("express").Router();
 const { body } = require("express-validator");
@@ -53,10 +56,24 @@ router.post(
 );
 
 router.post(
+  "/association-visitor-refresh-payment",
+  [body("id").notEmpty().withMessage("Id is required")],
+  validateRequest,
+  refreshAssociationVisitorPayment,
+);
+
+router.post(
   "/general-visitor-resend-pass",
   [body("id").notEmpty().withMessage("Id is required")],
   validateRequest,
   resendGeneralVisitorPass,
+);
+
+router.post(
+  "/association-visitor-resend-pass",
+  [body("id").notEmpty().withMessage("Id is required")],
+  validateRequest,
+  resendAssociationVisitorPass,
 );
 
 router.post(

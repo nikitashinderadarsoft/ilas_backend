@@ -1,6 +1,7 @@
 const Visitor = require("../../models/Visitor");
 const BusinessVisitor = require("../../models/BusinessVisitor");
 const ExhibitorInvitee = require("../../models/ExhibitorInvitee");
+const AssociationVisitor = require("../../models/AssociationVisitor");
 const Vip = require("../../models/Vip");
 const User = require("../../models/User");
 const CheckinHistory = require("../../models/CheckinHistory");
@@ -645,6 +646,212 @@ const resendBusinessVisitorPass = async (req, res) => {
   }
 };
 
+
+const refreshAssociationVisitorPayment = async (req, res) => {
+    try {
+      const { id } = req.body;
+
+      const visitor = await AssociationVisitor.findById(id);
+
+      if (!visitor) {
+        return res.status(404).json({
+          status: false,
+          message: "Association visitor not found",
+        });
+      }
+
+      if (!visitor.order_id) {
+        return res.status(400).json({
+          status: false,
+          message: "Order id missing for this visitor",
+        });
+      }
+
+      let paymentId = visitor.payment_id || null;
+      let razorpayStatus = null;
+      let finalStatus = visitor.payment_status || "PENDING";
+      let paymentIdInvalid = false;
+
+      if (paymentId) {
+        try {
+          const payment = await razorpay.payments.fetch(paymentId);
+
+          razorpayStatus = payment?.status || null;
+          finalStatus = mapRazorpayPaymentStatus(razorpayStatus);
+          paymentId = payment?.id || paymentId;
+        } catch (error) {
+          const isInvalidPaymentId =
+            error?.statusCode === 400 &&
+            error?.error?.code === "BAD_REQUEST_ERROR" &&
+            error?.error?.description ===
+              "The id provided does not exist";
+
+          if (!isInvalidPaymentId) {
+            throw error;
+          }
+
+          paymentIdInvalid = true;
+          paymentId = null;
+        }
+      }
+
+      if (!paymentId) {
+        try {
+          const orderPayments =
+            await razorpay.orders.fetchPayments(
+              visitor.order_id
+            );
+
+          const paymentList = Array.isArray(
+            orderPayments?.items
+          )
+            ? orderPayments.items
+            : [];
+
+          if (paymentList.length > 0) {
+            paymentList.sort(
+              (a, b) =>
+                (b.created_at || 0) -
+                (a.created_at || 0)
+            );
+
+            const latestPayment = paymentList[0];
+
+            paymentId = latestPayment?.id || null;
+            razorpayStatus = latestPayment?.status || null;
+
+            finalStatus = mapRazorpayPaymentStatus( razorpayStatus );
+          } else {
+            const order = await razorpay.orders.fetch(
+              visitor.order_id
+            );
+
+            if (order?.status === "paid") {
+              finalStatus = "SUCCESS";
+            }
+          }
+        } catch (error) {
+          return res.status(502).json({
+            status: false,
+            message: getRazorpayErrorMessage(
+              error,
+              "Unable to verify payment details from Razorpay"
+            ),
+          });
+        }
+      }
+
+      const updatedVisitor =
+        await AssociationVisitor.findByIdAndUpdate(
+          id,
+          {
+            payment_id: paymentId,
+            payment_status: finalStatus,
+          },
+          { new: true }
+        );
+
+      return res.status(200).json({
+        status: true,
+        message: "Payment status refreshed",
+        razorpay_status: razorpayStatus,
+        warning: paymentIdInvalid
+          ? "Stored payment_id was invalid; refreshed status using order payments"
+          : null,
+        data: updatedVisitor,
+      });
+    } catch (error) {
+      const message = getRazorpayErrorMessage(error);
+
+      return res.status(500).json({
+        status: false,
+        message,
+      });
+    }
+  };
+
+const resendAssociationVisitorPass = async (
+      req,
+      res
+    ) => {
+      try {
+        const { id } = req.body;
+
+        const data =
+          await AssociationVisitor.findById(id).select(
+            `
+            booking_no
+            association_visitor_pdf_url
+            phone
+            full_name
+            email
+            country_code
+            visiting_dates
+            payment_status
+          `
+          );
+
+        if (!data) {
+          return res.status(404).json({
+            status: false,
+            message: "Association visitor not found",
+          });
+        }
+
+        if (data.payment_status !== "SUCCESS") {
+          return res.status(400).json({
+            status: false,
+            message:
+              "Pass can be resent only for successful payments",
+          });
+        }
+
+        if (!data.association_visitor_pdf_url) {
+          return res.status(400).json({
+            status: false,
+            message:
+              "Pass PDF not generated yet for this visitor",
+          });
+        }
+
+        const cleanCountryCode = (data.country_code || "").replace(/\D/g, "");
+
+        const cleanPhone = (data.phone || "").replace(/\D/g, "");
+
+        const toNumber = `${cleanCountryCode}${cleanPhone}`;
+
+        await Promise.all([
+          callApi({
+            to: toNumber,
+            params: [
+              data.full_name,
+              buildBadgeValidityText(data.visiting_dates),
+              generateBadgeUrl(data._id),
+            ],
+          }),
+
+          sendMailCallApi({
+            email: data.email,
+            name: data.full_name,
+            pdf_link: data.association_visitor_pdf_url,
+          }),
+        ]);
+
+        return res.status(200).json({
+          status: true,
+          message: "Pass resent successfully",
+        });
+      } catch (error) {
+        return res.status(500).json({
+          status: false,
+          message:
+            error?.response?.data?.message ||
+            error?.message ||
+            "Failed to resend pass",
+        });
+      }
+    };
+
 module.exports = {
   getGeneralVisitorData,
   getBusinessVisitorData,
@@ -656,4 +863,6 @@ module.exports = {
   refreshGeneralVisitorPayment,
   resendGeneralVisitorPass,
   resendBusinessVisitorPass,
+  refreshAssociationVisitorPayment,
+  resendAssociationVisitorPass,
 };

@@ -31,10 +31,10 @@ const sendMailCallApi = async ({
           variables: {
             name,
             event_name:
-              "ACETECH Bengaluru 2026 - Architecture, Design & Building Innovation Expo",
+              "ILAS 2026 - Architecture, Design & Building Innovation Expo",
             address: "Bangalore International Exhibition Centre",
             //datetime: "9th, 10th & 11th October 2026",
-            badge_validity: "9th, 10th & 11th October 2026",
+            badge_validity: "20th November & 18th December 2026",
             //orderid,
             //date: datebooking,
             //qr_link,
@@ -43,7 +43,7 @@ const sendMailCallApi = async ({
         },
       ],
       from: {
-        name: "Registrations - AceTech",
+        name: "Registrations - ILAS",
         email: "registrations@gathrr.in",
       },
       domain: "gathrr.in",

@@ -110,6 +110,14 @@ const createAssociationVisitor = async (req, res) => {
 
     let payableAmount = getAssociationPrice(category);
 
+    const originalPrice =
+      BASE_PRICING[category];
+
+    const categoryDiscountAmount =
+      originalPrice - payableAmount;
+
+    const categoryDiscountPercentage = 50;
+
     let discountAmount = 0;
 
     let couponDoc = null;
@@ -227,6 +235,13 @@ const createAssociationVisitor = async (req, res) => {
           coupon_id: couponDoc?._id || null,
 
           subtotal_amount: getAssociationPrice(category),
+          original_price: originalPrice,
+
+          category_discount_amount:
+            categoryDiscountAmount,
+
+          category_discount_percentage:
+            categoryDiscountPercentage,
           discount_amount: discountAmount,
           final_payable_amount: payableAmount,
           gst_amount: gstAmount,
@@ -240,6 +255,7 @@ const createAssociationVisitor = async (req, res) => {
           // usd_price,
           pass_selection,
           category_price: payableAmount,
+          
           event_type,
           association_id,
         },
@@ -265,6 +281,13 @@ const createAssociationVisitor = async (req, res) => {
       coupon_id: couponDoc?._id || null,
 
       subtotal_amount: getAssociationPrice(category),
+      original_price: originalPrice,
+
+      category_discount_amount:
+        categoryDiscountAmount,
+
+      category_discount_percentage:
+        categoryDiscountPercentage,
       discount_amount: discountAmount,
       final_payable_amount: payableAmount,
       gst_amount: gstAmount,

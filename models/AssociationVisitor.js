@@ -46,6 +46,21 @@ const associationVisitorSchema = new mongoose.Schema(
       default: 0,
     },
 
+    original_price: {
+      type: Number,
+      default: 0,
+    },
+
+    category_discount_amount: {
+      type: Number,
+      default: 0,
+    },
+
+    category_discount_percentage: {
+      type: Number,
+      default: 0,
+    },
+
    
     subtotal_amount: { type: Number, required: true, default: 0 },
     gst_amount: { type: Number, default: 0 },
