@@ -1,4 +1,4 @@
-name: AceTech Backend CI/CD
+name: ILAS Backend CI/CD
 
 on:
   push:
@@ -47,7 +47,7 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           source: "."
-          target: "/www/wwwroot/acetech.api.radarsofttech.in/"
+          target: "/www/wwwroot/api.ilas.radarsofttech.in/"
           rm: false
           overwrite: true
 
@@ -59,7 +59,7 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
-            cd /www/wwwroot/acetech.api.radarsofttech.in/
+            cd /www/wwwroot/api.ilas.radarsofttech.in/
 
             # Add Node and PM2 to PATH to avoid "/usr/bin/env node: No such file or directory"
             export PATH=/www/server/nvm/versions/node/v22.17.0/bin:$PATH
@@ -68,10 +68,10 @@ jobs:
             npm ci
 
             # Zero-downtime reload: reload if running, otherwise start
-            if pm2 list | grep -q "acetech-backend"; then
-              pm2 reload acetech-backend
+            if pm2 list | grep -q "ilas-backend"; then
+              pm2 reload ilas-backend
             else
-              pm2 start npm --name "acetech-backend" -- start
+              pm2 start npm --name "ilas-backend" -- start
             fi
 
             # Save PM2 process list for auto-start
